@@ -1,0 +1,222 @@
+// ============================================
+// Grafana Alloy - Production Host + Docker Config
+// ============================================
+// This config collects:
+//   - Host system logs (syslog, auth, kernel, journal)
+//   - Docker container logs
+//   - Optional MariaDB logs (if you still mount them)
+//   - Node/system metrics
+// Sends logs to Loki and metrics to Prometheus.
+// ============================================
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ============================================
+// HOST LOGS
+// ============================================
+
+// System logs
+local.file_match "syslog" {
+  path_targets = [
+    { __path__ = "/var/log/syslog", job = "syslog" },
+    { __path__ = "/var/log/messages", job = "syslog" },
+  ]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.process.default.receiver]
+}
+
+// Auth logs
+local.file_match "auth" {
+  path_targets = [
+    { __path__ = "/var/log/auth.log", job = "auth" },
+    { __path__ = "/var/log/secure", job = "auth" },
+  ]
+}
+
+loki.source.file "auth" {
+  targets    = local.file_match.auth.targets
+  forward_to = [loki.process.default.receiver]
+}
+
+// Kernel logs
+local.file_match "kernel" {
+  path_targets = [
+    { __path__ = "/var/log/kern.log", job = "kernel" },
+  ]
+}
+
+loki.source.file "kernel" {
+  targets    = local.file_match.kernel.targets
+  forward_to = [loki.process.default.receiver]
+}
+
+// Systemd journal
+loki.source.journal "journal" {
+  forward_to = [loki.process.default.receiver]
+  labels = {
+    job = "journal",
+  }
+}
+
+// ============================================
+// DOCKER CONTAINER LOGS
+// ============================================
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_image"]
+    target_label  = "image"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker.output
+  forward_to = [loki.process.default.receiver]
+  labels = {
+    job = "docker",
+  }
+}
+
+// ============================================
+// OPTIONAL: MARIADB LOGS (keep if you still use it)
+// ============================================
+//
+//local.file_match "mariadb" {
+//  path_targets = [
+//    { __path__ = "/logs/mariadb/general.log", job = "mariadb", log_type = "general" },
+//    { __path__ = "/logs/mariadb/slow.log",    job = "mariadb", log_type = "slow" },
+//    { __path__ = "/logs/mariadb/error.log",   job = "mariadb", log_type = "error" },
+//  ]
+//}
+
+//loki.source.file "mariadb" {
+//  targets    = local.file_match.mariadb.targets
+//  forward_to = [loki.process.mariadb.receiver]
+//}
+
+// ============================================
+// LOG PROCESSING
+// ============================================
+
+// Default pipeline for most logs (Docker + host logs)
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      collector = "alloy",
+      environment = "production",   // change if you have multiple envs
+    }
+  }
+}
+
+// MariaDB pipeline (light normalization)
+loki.process "mariadb" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      collector = "alloy",
+      source    = "database",
+      service   = "mariadb",
+    }
+  }
+
+  // Optional: basic extraction (you can expand this)
+  stage.regex {
+    expression = "(?i)Query\\s+(?P<query>.*)"
+  }
+
+  stage.labels {
+    values = {
+      query = "query",   // becomes a label if you want (be careful with cardinality)
+    }
+  }
+}
+
+// ============================================
+// LOKI OUTPUT (LOGS)
+// ============================================
+
+loki.write "default" {
+  endpoint {
+    url = env("LOKI_URL")   
+  }
+
+  external_labels = {
+    host = env("HOSTNAME"),
+  }
+}
+
+// ============================================
+// METRICS - NODE EXPORTER STYLE
+// ============================================
+
+prometheus.exporter.unix "node" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+
+  disable_collectors = [
+    "arp", "bcache", "bonding", "btrfs", "conntrack", "drm",
+    "fibrechannel", "infiniband", "ipvs", "lnstat", "mdadm",
+    "nfs", "nfsd", "nvme", "powersupplyclass", "pressure",
+    "rapl", "schedstat", "selinux", "sockstat", "softnet",
+    "tapestats", "thermal_zone", "timex", "udp_queues",
+    "xfs", "zfs",
+  ]
+}
+
+prometheus.scrape "node" {
+  targets        = prometheus.exporter.unix.node.targets
+  scrape_interval = "30s"
+  forward_to     = [prometheus.relabel.node.receiver]
+}
+
+prometheus.relabel "node" {
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
+
+  rule {
+    target_label = "collector"
+    replacement  = "alloy"
+  }
+}
+
+// ============================================
+// PROMETHEUS OUTPUT (METRICS)
+// ============================================
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = env("PROMETHEUS_URL")   
+  }
+}
+

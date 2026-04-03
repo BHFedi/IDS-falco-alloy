@@ -1,0 +1,12 @@
+# Ignore logs
+**/logs/*
+*.log
+
+# Ignore backups
+*.bak
+
+# Ignore sensitive certificates
+nginx/certs/*
+
+# Ignore OS specific files
+.DS_Store
