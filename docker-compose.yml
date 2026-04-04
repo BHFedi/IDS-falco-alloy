@@ -3,7 +3,7 @@ services:
   # NGINX REVERSE PROXY (TLS ENTRYPOINT)
   # =========================
   nginx:
-    image: nginxinc/nginx-unprivileged:quic
+    image: nginxinc/nginx-unprivileged:mainline
     container_name: prod-nginx
     restart: unless-stopped
     cap_add:

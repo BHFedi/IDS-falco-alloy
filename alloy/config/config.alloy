@@ -9,10 +9,10 @@
 // Sends logs to Loki and metrics to Prometheus.
 // ============================================
 
-logging {
-  level  = "info"
-  format = "logfmt"
-}
+//logging {
+//  level  = "info"
+//  format = "logfmt"
+//}
 
 // ============================================
 // HOST LOGS
@@ -129,28 +129,28 @@ loki.process "default" {
 }
 
 // MariaDB pipeline (light normalization)
-loki.process "mariadb" {
-  forward_to = [loki.write.default.receiver]
-
-  stage.static_labels {
-    values = {
-      collector = "alloy",
-      source    = "database",
-      service   = "mariadb",
-    }
-  }
+//loki.process "mariadb" {
+//  forward_to = [loki.write.default.receiver]
+//
+//  stage.static_labels {
+//    values = {
+//      collector = "alloy",
+//      source    = "database",
+//      service   = "mariadb",
+//    }
+//  }
 
   // Optional: basic extraction (you can expand this)
-  stage.regex {
-    expression = "(?i)Query\\s+(?P<query>.*)"
-  }
+//  stage.regex {
+//    expression = "(?i)Query\\s+(?P<query>.*)"
+//  }
 
-  stage.labels {
-    values = {
-      query = "query",   // becomes a label if you want (be careful with cardinality)
-    }
-  }
-}
+//  stage.labels {
+//    values = {
+//      query = "query",   // becomes a label if you want (be careful with cardinality)
+//    }
+//  }
+//}
 
 // ============================================
 // LOKI OUTPUT (LOGS)
