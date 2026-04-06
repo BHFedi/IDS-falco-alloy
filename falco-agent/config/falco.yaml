@@ -35,13 +35,12 @@ time_format_iso_8601: true
 # HTTP Output (to Falcosidekick)
 # ---------------------------------------------
 # Note: This section is auto-generated from falco.yaml.template
-# mTLS settings are controlled via MTLS_ENABLED in .env
 stdout_output:
   enabled: true
 
 http_output:
   enabled: true
-  url: "http://falcosidekick:2801/"
+  url: "https://falco.example.com/"
 
 # ---------------------------------------------
 # Priority & Filtering
@@ -49,7 +48,7 @@ http_output:
 
 # Minimum priority to output
 # Values: debug, info, informational, notice, warning, error, critical, alert, emergency
-priority: notice
+priority: debug
 
 # ---------------------------------------------
 # Rules Configuration
@@ -57,10 +56,11 @@ priority: notice
 
 # Rules files to load
 rules_files:
-  - /etc/falco/rules/falco_rules.yaml
-  - /etc/falco/rules/falco-incubating_rules.yaml
-  - /etc/falco/rules/falco-sandbox_rules.yaml
-  - /etc/falco/rules/custom_rules.yaml
+  - /etc/falco/rules.d
+  #- /etc/falco/rules/falco_rules.yaml
+  #- /etc/falco/rules/falco-incubating_rules.yaml
+  #- /etc/falco/rules/falco-sandbox_rules.yaml
+  #- /etc/falco/rules/custom_rules.yaml
 
 # Watch rules files for changes
 watch_config_files: true

@@ -1,6 +1,4 @@
 # ==============================================
-# Falco Default Rules for SIB
-# ==============================================
 # This file contains commonly used rules from the
 # official Falco rules repository.
 # Full rules: https://github.com/falcosecurity/rules

@@ -1,3 +1,13 @@
+# Ignore entire Nginx directory (Local installation used instead)
+nginx/
+
+# Ignore sensitive Alloy certificates and keys
+alloy/certs/*
+**/certs/*.key
+**/certs/*.crt
+**/certs/*.csr
+**/certs/*.srl
+
 # Ignore logs
 **/logs/*
 *.log
@@ -5,8 +15,9 @@
 # Ignore backups
 *.bak
 
-# Ignore sensitive certificates
-nginx/certs/*
+# Ignore Alloy data storage
+alloy-data/
 
 # Ignore OS specific files
 .DS_Store
+

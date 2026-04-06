@@ -9,10 +9,10 @@
 // Sends logs to Loki and metrics to Prometheus.
 // ============================================
 
-//logging {
-//  level  = "info"
-//  format = "logfmt"
-//}
+logging {
+  level  = "info"
+  format = "logfmt"
+}
 
 // ============================================
 // HOST LOGS
@@ -95,27 +95,6 @@ loki.source.docker "containers" {
   }
 }
 
-// ============================================
-// OPTIONAL: MARIADB LOGS (keep if you still use it)
-// ============================================
-//
-//local.file_match "mariadb" {
-//  path_targets = [
-//    { __path__ = "/logs/mariadb/general.log", job = "mariadb", log_type = "general" },
-//    { __path__ = "/logs/mariadb/slow.log",    job = "mariadb", log_type = "slow" },
-//    { __path__ = "/logs/mariadb/error.log",   job = "mariadb", log_type = "error" },
-//  ]
-//}
-
-//loki.source.file "mariadb" {
-//  targets    = local.file_match.mariadb.targets
-//  forward_to = [loki.process.mariadb.receiver]
-//}
-
-// ============================================
-// LOG PROCESSING
-// ============================================
-
 // Default pipeline for most logs (Docker + host logs)
 loki.process "default" {
   forward_to = [loki.write.default.receiver]
@@ -128,29 +107,6 @@ loki.process "default" {
   }
 }
 
-// MariaDB pipeline (light normalization)
-//loki.process "mariadb" {
-//  forward_to = [loki.write.default.receiver]
-//
-//  stage.static_labels {
-//    values = {
-//      collector = "alloy",
-//      source    = "database",
-//      service   = "mariadb",
-//    }
-//  }
-
-  // Optional: basic extraction (you can expand this)
-//  stage.regex {
-//    expression = "(?i)Query\\s+(?P<query>.*)"
-//  }
-
-//  stage.labels {
-//    values = {
-//      query = "query",   // becomes a label if you want (be careful with cardinality)
-//    }
-//  }
-//}
 
 // ============================================
 // LOKI OUTPUT (LOGS)
@@ -158,7 +114,12 @@ loki.process "default" {
 
 loki.write "default" {
   endpoint {
-    url = env("LOKI_URL")   
+    url = env("LOKI_URL")  
+    tls_config {
+      ca_file   = "/etc/alloy/certs/ca.crt"
+      cert_file = "/etc/alloy/certs/client.crt"
+      key_file  = "/etc/alloy/certs/client.key"
+    }
   }
 
   external_labels = {

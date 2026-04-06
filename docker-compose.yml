@@ -1,31 +1,5 @@
 services:
   # =========================
-  # NGINX REVERSE PROXY (TLS ENTRYPOINT)
-  # =========================
-  nginx:
-    image: nginxinc/nginx-unprivileged:mainline
-    container_name: prod-nginx
-    restart: unless-stopped
-    cap_add:
-      - NET_BIND_SERVICE
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
-      - ./nginx/logs:/var/log/nginx 
-    networks:
-      - prod-healio
-
-    depends_on:
-      - falco
-      - alloy
-
-  # =========================
   # FALCO IDS
   # =========================
   falco:
@@ -49,10 +23,7 @@ services:
     environment:
       - HOST_ROOT=/host
       - FALCOCTL_DRIVER_TYPE=modern_ebpf
-      - FALCO_LOG_LEVEL=info
-
-      # 🔴 IMPORTANT: Falco → Falcosidekick (in MON stack)
-      - FALCOSIDEKICK_URL=https://falcosidekick:2801
+      - FALCO_LOG_LEVEL=debug
 
     networks:
       - prod-healio
@@ -81,8 +52,8 @@ services:
 
     volumes:
       - ./alloy/config/config.alloy:/etc/alloy/config.alloy:ro
+      - ./alloy/certs:/etc/alloy/certs:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./../dvwa-lab/logs:/logs:ro
       - alloy-data:/var/lib/alloy/data
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -93,9 +64,9 @@ services:
       - HOST_SYS=/host/sys
       - HOST_ROOT=/host/root
 
-      # 🔴 IMPORTANT: Alloy → Loki/Prometheus (MON stack via internal DNS)
-      - LOKI_URL=https://loki:3100/loki/api/v1/push
-      - PROMETHEUS_URL=https://prometheus:9090/api/v1/write
+      # IMPORTANT: Alloy → Loki/Prometheus (via DNS)
+      - PROMETHEUS_URL=https://prometheus.example.com/api/v1/write
+      - LOKI_URL=https://loki.example.com/loki/api/v1/push
 
     pid: host
     privileged: true
