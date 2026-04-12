@@ -40,7 +40,7 @@ stdout_output:
 
 http_output:
   enabled: true
-  url: "https://falco.example.com/"
+  url: "http://192.168.55.193:2801/"
 
 # ---------------------------------------------
 # Priority & Filtering
@@ -93,7 +93,7 @@ grpc_output:
 # ---------------------------------------------
 
 webserver:
-  enabled: true
+  enabled: false
   listen_port: 8765
   k8s_healthz_endpoint: /healthz
   ssl_enabled: false
