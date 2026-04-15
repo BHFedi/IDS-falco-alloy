@@ -48,7 +48,7 @@ http_output:
 
 # Minimum priority to output
 # Values: debug, info, informational, notice, warning, error, critical, alert, emergency
-priority: debug
+priority: notice
 
 # ---------------------------------------------
 # Rules Configuration
@@ -57,9 +57,9 @@ priority: debug
 # Rules files to load
 rules_files:
   - /etc/falco/rules.d
-  #- /etc/falco/rules/falco_rules.yaml
-  #- /etc/falco/rules/falco-incubating_rules.yaml
-  #- /etc/falco/rules/falco-sandbox_rules.yaml
+  - /etc/falco/rules/falco_rules.yaml
+  - /etc/falco/rules/falco-incubating_rules.yaml
+  - /etc/falco/rules/falco-sandbox_rules.yaml
   #- /etc/falco/rules/custom_rules.yaml
 
 # Watch rules files for changes

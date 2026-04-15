@@ -1948,7 +1948,11 @@
 
 # Container access to host filesystem paths
 - macro: user_known_host_path_access
-  condition: (never_true)
+  condition: >
+    (proc.name = "alloy" and 
+     (fd.name startswith "/host/proc" or 
+      fd.name startswith "/host/sys" or 
+      fd.name startswith "/host/root"))
 
 # Known container runtimes that legitimately access host paths
 - macro: known_container_runtime_host_access

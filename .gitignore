@@ -21,3 +21,6 @@ alloy-data/
 # Ignore OS specific files
 .DS_Store
 
+secrets/*.txt
+secrets/*.key
+!secrets/*.key

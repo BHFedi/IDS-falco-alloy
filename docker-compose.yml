@@ -11,6 +11,7 @@ services:
 
     volumes:
       - ./falco-agent/config/falco.yaml:/etc/falco/falco.yaml:ro
+      - ./falco-agent/config/rules.d:/etc/falco/rules.d:rw
       - ./falco-agent/config/rules:/etc/falco/rules:ro
       - ./falco-agent/falco-plugins:/usr/lib/falco/plugins:ro
       - /var/run/docker.sock:/host/var/run/docker.sock:ro
@@ -34,6 +35,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # =========================
+  # RULES SYNC SERVER
+  # =========================
+
+  rules-sync:
+    build: ./rules-sync          # or use an image if you prefer
+    container_name: rules-sync
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "5002:5002"              # optional, for debugging webhook
+    volumes:
+      # Share the same rules.d directory used by Falco
+      - ./falco-agent/config/rules.d:/etc/falco/rules.d:rw
+    environment:
+      - ANALYSER_URL=http://192.168.55.193:5000   
+      - RULES_API_KEY_FILE=/run/secrets/rules_api_key
+      - WEBHOOK_API_KEY_FILE=/run/secrets/rules_sync_api_key
+      - SYNC_INTERVAL_SECONDS=60
+    secrets:
+      - rules_api_key
+      - rules_sync_api_key
+    networks:
+      - prod-healio            # or whatever network Falco uses
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # =========================
   # GRAFANA ALLOY (COLLECTOR)
@@ -64,7 +95,7 @@ services:
       - HOST_SYS=/host/sys
       - HOST_ROOT=/host/root
 
-      - PROMETHEUS_URL=http://192.168.55.193:9090/       # Prometheus remote write
+      - PROMETHEUS_URL=http://192.168.55.193:9090/api/v1/write      # Prometheus remote write
       - LOKI_URL=http://192.168.55.193:3100/loki/api/v1/push  # Loki log ingestion
 
     pid: host
@@ -72,6 +103,12 @@ services:
 
     networks:
       - prod-healio
+
+secrets:
+  rules_api_key:
+    file: ./secrets/rules_api_key.txt
+  rules_sync_api_key:
+    file: ./secrets/rules_sync_api_key.txt
 
 volumes:
   alloy-data:
