@@ -4,8 +4,8 @@ services:
   # =========================
   falco:
     image: falcosecurity/falco:0.43.0
-    container_name: falco-agent
-    hostname: falco-host
+    container_name: falco-client-0
+    hostname: falco-client-0
     privileged: true
     restart: unless-stopped
 
@@ -41,30 +41,33 @@ services:
   # =========================
 
   rules-sync:
-    build: ./rules-sync          # or use an image if you prefer
+    build: ./rules-sync
     container_name: rules-sync
     restart: unless-stopped
-    user: "1000:1000"
+    # Remove this line or keep consistent with Dockerfile
+    # user: "1000:1000"   ← You can remove it if Dockerfile already uses UID 1000
     ports:
-      - "5002:5002"              # optional, for debugging webhook
+      - "5002:5002" # optional, for debugging webhook/push
     volumes:
-      # Share the same rules.d directory used by Falco
       - ./falco-agent/config/rules.d:/etc/falco/rules.d:rw
     environment:
-      - ANALYSER_URL=http://192.168.55.193:5000   
+      - ANALYSER_URL=http://192.168.55.193:5000
       - RULES_API_KEY_FILE=/run/secrets/rules_api_key
       - WEBHOOK_API_KEY_FILE=/run/secrets/rules_sync_api_key
       - SYNC_INTERVAL_SECONDS=60
+      # Optional: override path if you want
+      # - RULES_OUTPUT_PATH=/etc/falco/rules.d/falco_threatintel_rules.yaml
     secrets:
       - rules_api_key
       - rules_sync_api_key
     networks:
-      - prod-healio            # or whatever network Falco uses
+      - prod-healio
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 10s   # ← added small start_period
 
   # =========================
   # GRAFANA ALLOY (COLLECTOR)
