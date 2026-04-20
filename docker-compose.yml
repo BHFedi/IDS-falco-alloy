@@ -4,7 +4,7 @@ services:
   # =========================
   falco:
     image: falcosecurity/falco:0.43.0
-    container_name: falco-client-0
+    container_name: falco-client-0 # Change to falco-client-i 
     hostname: falco-client-0
     privileged: true
     restart: unless-stopped
