@@ -40,7 +40,10 @@ stdout_output:
 
 http_output:
   enabled: true
-  url: "http://192.168.55.193:2801/"
+  url: "https://192.168.55.193/falco/"
+  insecure: false
+  custom_headers:
+    - X-API-Key: ${FALCO_API_KEY}
 
 # ---------------------------------------------
 # Priority & Filtering

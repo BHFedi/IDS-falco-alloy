@@ -98,8 +98,8 @@ services:
       - HOST_SYS=/host/sys
       - HOST_ROOT=/host/root
 
-      - PROMETHEUS_URL=http://192.168.55.193:9090/api/v1/write      # Prometheus remote write
-      - LOKI_URL=http://192.168.55.193:3100/loki/api/v1/push  # Loki log ingestion
+      - PROMETHEUS_URL=https://192.168.55.193/Prometheus/api/v1/write      # Prometheus remote write
+      - LOKI_URL=https://57.131.18.228/loki/loki/api/v1/push  # Loki log ingestion
 
     pid: host
     privileged: true
