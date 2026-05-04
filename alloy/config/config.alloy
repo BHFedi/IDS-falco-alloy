@@ -130,6 +130,12 @@ loki.process "fail2ban" {
     expression = "^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2},\\d+)\\s+fail2ban\\.(?P<component>\\w+)\\s+\\[\\d+\\]:\\s+(?P<level>\\w+)\\s+\\[(?P<jail>[^\\]]+)\\]\\s+(?P<action>Ban|Unban|Found|Ignore)\\s+(?P<ip>\\S+)"
   }
 
+  stage.geoip {
+    db     = "/var/lib/GeoIP/GeoLite2-City.mmdb"
+    db_type = "city"
+    source = "ip"
+  }
+
   stage.timestamp {
     source = "timestamp"
     format = "2006-01-02 15:04:05,000"
@@ -138,8 +144,16 @@ loki.process "fail2ban" {
   // Promote fields to Loki labels for filtering in Grafana
   stage.labels {
     values = {
-      jail   = null,
-      action = null,
+      jail                    = null,
+      action                  = null,
+      ip                      = null,
+      geoip_city_name         = null,
+      geoip_country_name      = null,
+      geoip_country_code      = null,
+      geoip_continent_name    = null,
+      geoip_continent_code    = null,
+      geoip_location_latitude = null,
+      geoip_location_longitude = null,
     }
   }
 
