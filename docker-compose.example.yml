@@ -1,34 +1,27 @@
 services:
-  # =========================
-  # FALCO IDS
-  # =========================
   falco:
-    image: falcosecurity/falco:0.43.0
-    container_name: falco-client-0 # Change to falco-client-i 
+    image: falcosecurity/falco:latest
+    container_name: falco-client-0
     hostname: falco-client-0
     privileged: true
     restart: unless-stopped
-
     volumes:
       - ./falco-agent/config/falco.yaml:/etc/falco/falco.yaml:ro
       - ./falco-agent/config/rules.d:/etc/falco/rules.d:rw
       - ./falco-agent/config/rules:/etc/falco/rules:ro
       - ./falco-agent/falco-plugins:/usr/lib/falco/plugins:ro
-      - /var/run/docker.sock:/host/var/run/docker.sock:ro
+      - /var/run/docker.sock:/host/var/run/docker.sock:ro  # Host socket (note: exposing this has security implications)
       - /dev:/host/dev:ro
       - /proc:/host/proc:ro
       - /etc:/host/etc:ro
       - /sys/kernel/debug:/sys/kernel/debug:ro
       - /sys/kernel/tracing:/sys/kernel/tracing:ro
-
     environment:
       - HOST_ROOT=/host
       - FALCOCTL_DRIVER_TYPE=modern_ebpf
       - FALCO_LOG_LEVEL=debug
-
     networks:
-      - prod-healio
-
+      - prod-REDACTED
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8765/healthz"]
       interval: 30s
@@ -36,78 +29,78 @@ services:
       retries: 3
       start_period: 60s
 
-  # =========================
-  # RULES SYNC SERVER
-  # =========================
-
   rules-sync:
     build: ./rules-sync
     container_name: rules-sync
     restart: unless-stopped
-    # Remove this line or keep consistent with Dockerfile
-    # user: "1000:1000"   ← You can remove it if Dockerfile already uses UID 1000
     ports:
-      - "5002:5002" # optional, for debugging webhook/push
+      - "5002:5002"
     volumes:
       - ./falco-agent/config/rules.d:/etc/falco/rules.d:rw
     environment:
-      - ANALYSER_URL=http://192.168.55.193:5000
+      - ANALYSER_URL=https://analyser.example.local/       # redacted internal URL
       - RULES_API_KEY_FILE=/run/secrets/rules_api_key
       - WEBHOOK_API_KEY_FILE=/run/secrets/rules_sync_api_key
       - SYNC_INTERVAL_SECONDS=60
-      # Optional: override path if you want
-      # - RULES_OUTPUT_PATH=/etc/falco/rules.d/falco_threatintel_rules.yaml
     secrets:
       - rules_api_key
       - rules_sync_api_key
     networks:
-      - prod-healio
+      - prod-REDACTED
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s   # ← added small start_period
+      start_period: 10s
 
-  # =========================
-  # GRAFANA ALLOY (COLLECTOR)
-  # =========================
   alloy:
     image: grafana/alloy:latest
     container_name: alloy
-    hostname: ${HOSTNAME:-collector-01}
+    hostname: collector-01
     restart: unless-stopped
-
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
-
+    ports:
+      - "127.0.0.1:12345:12345"
     volumes:
       - ./alloy/config/config.alloy:/etc/alloy/config.alloy:ro
-      - ./alloy/certs:/etc/alloy/certs:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /:/host/root:ro
-
+      - /var/log:/var/log:ro
     environment:
       - HOST_PROC=/host/proc
       - HOST_SYS=/host/sys
       - HOST_ROOT=/host/root
-
-      - PROMETHEUS_URL=https://192.168.55.193/Prometheus/api/v1/write      # Prometheus remote write
-      - LOKI_URL=https://57.131.18.228/loki/loki/api/v1/push  # Loki log ingestion
-
+      - PROMETHEUS_URL=https://prometheus.example.local/api/v1/write  # redacted
+      - LOKI_URL=https://loki.example.local/api/v1/push              # redacted
+      - /var/lib/GeoIP:/host/root/var/lib/GeoIP:ro
+    secrets:
+      - loki_api_key
+      - prom_api_key
     pid: host
-    privileged: true
-
     networks:
-      - prod-healio
+      - prod-REDACTED
+
+  fail2ban-exporter:
+    image: registry.gitlab.com/hctrdev/fail2ban-prometheus-exporter:latest
+    container_name: fail2ban-exporter
+    restart: unless-stopped
+    volumes:
+      - /var/run/fail2ban:/var/run/fail2ban:ro
+    networks:
+      - prod-REDACTED
 
 secrets:
+  loki_api_key:
+    file: ./secrets/nginx/loki_api_key.txt
+  prom_api_key:
+    file: ./secrets/nginx/prom_api_key.txt
   rules_api_key:
     file: ./secrets/rules_api_key.txt
   rules_sync_api_key:
@@ -117,6 +110,6 @@ volumes:
   alloy-data:
 
 networks:
-  prod-healio:
-    name: prod-healio
+  prod-REDACTED:
     driver: bridge
+

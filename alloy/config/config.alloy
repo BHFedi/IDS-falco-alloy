@@ -9,7 +9,7 @@
 // ============================================
 
 logging {
-  level  = "info"
+  level  = "debug"
   format = "logfmt"
 }
 
@@ -106,19 +106,67 @@ loki.process "default" {
   }
 }
 
+// ============================================
+// FAIL2BAN LOGS
+// ============================================
+
+local.file_match "fail2ban" {
+  path_targets = [
+    { __path__ = "/var/log/fail2ban.log", job = "fail2ban" },
+  ]
+}
+
+loki.source.file "fail2ban" {
+  targets    = local.file_match.fail2ban.targets
+  forward_to = [loki.process.fail2ban.receiver]
+}
+
+loki.process "fail2ban" {
+  forward_to = [loki.write.default.receiver]
+
+  // Parse lines like:
+  // 2026-05-02 10:30:00,123 fail2ban.actions [1234]: NOTICE [sshd] Ban 192.168.1.100
+  stage.regex {
+    expression = "^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2},\\d+)\\s+fail2ban\\.(?P<component>\\w+)\\s+\\[\\d+\\]:\\s+(?P<level>\\w+)\\s+\\[(?P<jail>[^\\]]+)\\]\\s+(?P<action>Ban|Unban|Found|Ignore)\\s+(?P<ip>\\S+)"
+  }
+
+  stage.timestamp {
+    source = "timestamp"
+    format = "2006-01-02 15:04:05,000"
+  }
+
+  // Promote fields to Loki labels for filtering in Grafana
+  stage.labels {
+    values = {
+      jail   = null,
+      action = null,
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      collector     = "alloy",
+      environment   = "production",
+      job           = "fail2ban",
+    }
+  }
+}
 
 // ============================================
 // LOKI OUTPUT (LOGS)
 // ============================================
+local.file "loki_api_key" {
+  filename  = "/run/secrets/loki_api_key"
+  is_secret = true
+}
 
 loki.write "default" {
   endpoint {
-    url = env("LOKI_URL")  
-//    tls_config {
-//      ca_file   = "/etc/alloy/certs/ca.crt"
-//      cert_file = "/etc/alloy/certs/client.crt"
-//      key_file  = "/etc/alloy/certs/client.key"
-//    }
+    url  = sys.env("LOKI_URL")
+
+    headers = {
+      "X-API-Key" = convert.nonsensitive(local.file.loki_api_key.content),
+    }
   }
 
   external_labels = {
@@ -169,14 +217,49 @@ prometheus.relabel "node" {
     replacement  = "alloy"
   }
 }
+// ============================================
+// Fail2ban METRICS
+// ============================================
+prometheus.scrape "fail2ban" {
+  targets = [
+    {
+      __address__ = "fail2ban-exporter:9191",
+      job         = "fail2ban",
+      instance    = env("HOSTNAME"),
+    },
+  ]
 
+  scrape_interval = "30s"
+  forward_to = [prometheus.relabel.fail2ban.receiver]
+}
+
+prometheus.relabel "fail2ban" {
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "fail2ban"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
+}
 // ============================================
 // PROMETHEUS OUTPUT (METRICS)
 // ============================================
+local.file "prom_api_key" {
+  filename  = "/run/secrets/prom_api_key"
+  is_secret = true
+}
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("PROMETHEUS_URL")   
+    url  = sys.env("PROMETHEUS_URL")
+
+    headers = {
+      "X-API-Key" = convert.nonsensitive(local.file.prom_api_key.content),
+    }
   }
 }
-

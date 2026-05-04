@@ -24,3 +24,4 @@ alloy-data/
 secrets/*.txt
 secrets/*.key
 !secrets/*.key
+docker-compose.yml
